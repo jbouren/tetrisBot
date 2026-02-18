@@ -774,28 +774,48 @@ def main():
             # 4. VERIFY PLACEMENT (column-based)
             commit = False
             actual_ghost_cells = set()
+            actual_column = None
             # Poll for up to 15 frames for ghost to appear, checking every frame
             for poll_attempt in range(15):
                 frame = core.read_screen()
                 board_with_ghost = read_board(frame, threshold=board_threshold)
                 actual_ghost_cells = find_ghost_piece(board_with_ghost, settled_board)
 
-                # If we found a valid 4-cell ghost, check its column
                 if len(actual_ghost_cells) == 4:
+                    # Normal case: ghost and falling piece are separate components.
                     actual_column = min({c for r, c in actual_ghost_cells})
-                    if actual_column == column:
-                        commit = True
-                        break  # Match found, exit poll loop
+                else:
+                    # Fallback: near game over the ghost and falling piece merge into one
+                    # connected component (too close together). Use diff-based column instead.
+                    actual_column = find_piece_column(board_with_ghost, settled_board)
+
+                if actual_column is not None and actual_column == column:
+                    commit = True
+                    break
 
                 wait_frames(core, 1, frame_delay)  # Wait one frame before retrying
 
             if not commit and not skipped:
-                logger.warning("  - PLACEMENT MISMATCH! Plan aborted. Dropping piece as is.")
-                if len(actual_ghost_cells) == 4:
-                    actual_column = min({c for r,c in actual_ghost_cells})
-                    logger.warning("    Landed in col %d, expected %d", actual_column, column)
+                if actual_column is not None:
+                    delta = column - actual_column
+                    logger.warning("  - PLACEMENT MISMATCH! At col %d, expected %d. Correcting %d taps %s.",
+                                   actual_column, column, abs(delta), "RIGHT" if delta > 0 else "LEFT")
+                    if delta != 0:
+                        direction = "R_DPAD" if delta > 0 else "L_DPAD"
+                        current_col = actual_column
+                        for _ in range(abs(delta)):
+                            hold_button(core, input_server, direction, TAP_HOLD, frame_delay)
+                            wait_frames(core, TAP_RELEASE, frame_delay)
+                            for _ in range(15):
+                                frame = core.read_screen()
+                                board_after_move = read_board(frame, threshold=board_threshold)
+                                next_col = find_piece_column(board_after_move, settled_board)
+                                if next_col is not None and next_col != current_col:
+                                    current_col = next_col
+                                    break
+                                wait_frames(core, 1, frame_delay)
                 else:
-                    logger.warning("    Could not find valid ghost piece to verify column.")
+                    logger.warning("  - PLACEMENT MISMATCH! Could not locate piece via CV.")
 
             # 5. COMMIT (Hard Drop)
             settled_board, lines_cleared, drop_ok = commit_hard_drop(
@@ -881,11 +901,7 @@ def main():
                 logger.info("Board topped out (rows 0-3 occupied). Game over.")
                 break
 
-            if pieces_placed % 50 == 0:
-                clear_screenshot_dir()
-
-            if pieces_placed % 50 == 0:
-                clear_screenshot_dir()
+            clear_screenshot_dir()
 
             if pieces_placed % 20 == 0:
                 status_msg = "--- Status: %d pieces, %d lines, %d swaps, verify=%d/%d OK" % (

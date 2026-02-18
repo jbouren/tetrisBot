@@ -30,6 +30,7 @@ def run_games(evaluator, depth: int, beam_width: int, n_games: int, seed_offset:
     """Run n_games in simulation with the given lookahead depth."""
     results = []
     for game_idx in range(n_games):
+        t_game = time.time()
         sim = TetrisSim(seed=seed_offset + game_idx)
         sim.reset()
 
@@ -53,10 +54,13 @@ def run_games(evaluator, depth: int, beam_width: int, n_games: int, seed_offset:
             if done:
                 break
 
+        elapsed_game = time.time() - t_game
         results.append({
             "lines": sim.lines_cleared,
             "pieces": sim.pieces_placed,
         })
+        print(f"  game {game_idx+1:>2}/{n_games}  lines={sim.lines_cleared:>4}  "
+              f"pieces={sim.pieces_placed:>4}  {elapsed_game:.1f}s", flush=True)
 
     return results
 
@@ -65,12 +69,12 @@ def print_stats(label: str, results: list[dict], elapsed: float):
     lines = [r["lines"] for r in results]
     pieces = [r["pieces"] for r in results]
     n = len(results)
-    print(f"\n{'='*55}")
+    print(f"\n{'='*55}", flush=True)
     print(f"  {label}  ({n} games, {elapsed:.1f}s total, {elapsed/n:.2f}s/game)")
     print(f"{'='*55}")
     print(f"  Lines:  avg={np.mean(lines):.1f}  median={np.median(lines):.0f}"
           f"  best={max(lines)}  worst={min(lines)}")
-    print(f"  Pieces: avg={np.mean(pieces):.1f}  best={max(pieces)}")
+    print(f"  Pieces: avg={np.mean(pieces):.1f}  best={max(pieces)}", flush=True)
 
 
 def main():
@@ -87,14 +91,14 @@ def main():
                         help="Only run baseline (depth=0)")
     args = parser.parse_args()
 
-    print(f"Loading evaluator from {args.weights} (device={args.device})...")
+    print(f"Loading evaluator from {args.weights} (device={args.device})...", flush=True)
     evaluator = BoardEvaluator(args.weights, device=args.device)
 
     depths = [0] if args.baseline_only else args.depth
 
     for depth in depths:
         label = f"Depth {depth} (baseline)" if depth == 0 else f"Depth {depth} lookahead"
-        print(f"\nRunning {args.games} games: {label}...")
+        print(f"\nRunning {args.games} games: {label}...", flush=True)
         t0 = time.time()
         results = run_games(evaluator, depth, args.beam_width, args.games, seed_offset=42)
         elapsed = time.time() - t0
