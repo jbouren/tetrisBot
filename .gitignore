@@ -1,0 +1,56 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# C/C++ build artifacts
+*.o
+*.a
+build/
+
+# Compiled mupen64plus binaries/plugins (rebuilt via setup_env.sh)
+lib/
+
+# Runtime artifacts
+screenshots/
+runs/
+*.output
+discovery_results.txt
+
+# Debug images (large, transient)
+board.png
+board_after_spawn.png
+settled_board_before.png
+full_screen_grid.png
+tetris_preview_grid.png
+
+# Claude project settings
+.claude/
+
+# Secrets
+.env
+.env.*
+!.env.example
